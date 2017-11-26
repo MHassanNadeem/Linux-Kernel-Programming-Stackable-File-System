@@ -20,10 +20,15 @@ static ssize_t wrapfs_read(struct file *file, char __user *buf,
 
 	lower_file = wrapfs_lower_file(file);
 	err = vfs_read(lower_file, buf, count, ppos);
-	/* update our inode atime upon a successful lower read */
-	if (err >= 0)
+
+	/* upon a successful lower read */
+	if (err >= 0){
+		PRINT("------ READ DECRYPT -----");
+		xcfs_decrypt(buf, count);
+		/* update our inode atime */
 		fsstack_copy_attr_atime(d_inode(dentry),
 					file_inode(lower_file));
+    }
 
 	return err;
 }
@@ -37,6 +42,8 @@ static ssize_t wrapfs_write(struct file *file, const char __user *buf,
 	struct dentry *dentry = file->f_path.dentry;
 
 	lower_file = wrapfs_lower_file(file);
+	PRINT("------ WRITE ENCRYPT -----");
+	xcfs_encrypt((char*)buf, count);
 	err = vfs_write(lower_file, buf, count, ppos);
 	/* update our inode times+sizes upon a successful lower write */
 	if (err >= 0) {
