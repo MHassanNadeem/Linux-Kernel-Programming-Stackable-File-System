@@ -28,6 +28,11 @@
 #include <linux/xattr.h>
 #include <linux/exportfs.h>
 
+#define DBG(var, type)          printk(KERN_INFO #var" = %"#type"\n", var)
+#define DBGM(var, type, desc)   printk(KERN_INFO desc" = %"#type"\n", var)
+#define PRINT(msg, ...)         printk(KERN_INFO msg, ##__VA_ARGS__)
+#define ERROR(msg, ...)         printk(KERN_ALERT "ERROR: "msg, ##__VA_ARGS__)
+
 // Prototype lifted from fs/internal.h
 extern int vfs_path_lookup(struct dentry *, struct vfsmount *, const char *, unsigned int, struct path *);
 
