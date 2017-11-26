@@ -28,8 +28,14 @@
 #include <linux/xattr.h>
 #include <linux/exportfs.h>
 
+// Prototype lifted from fs/internal.h
+extern int vfs_path_lookup(struct dentry *, struct vfsmount *, const char *, unsigned int, struct path *);
+
 /* the file system name */
 #define WRAPFS_NAME "wrapfs"
+
+/* magic */
+#define WRAPFS_SUPER_MAGIC	0xb550ca10
 
 /* wrapfs root inode number */
 #define WRAPFS_ROOT_INO     1
