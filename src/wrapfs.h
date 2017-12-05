@@ -27,6 +27,8 @@
 #include <linux/sched.h>
 #include <linux/xattr.h>
 #include <linux/exportfs.h>
+#include <linux/highmem.h>
+#include <linux/pagemap.h>
 
 #define DBG(var, type)          printk(KERN_INFO #var" = %"#type"\n", var)
 #define DBGM(var, type, desc)   printk(KERN_INFO desc" = %"#type"\n", var)

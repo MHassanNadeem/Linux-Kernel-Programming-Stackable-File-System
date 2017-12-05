@@ -83,7 +83,52 @@ static ssize_t wrapfs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
 	return -EINVAL;
 }
 
+static int wrapfs_readpage(struct file *file, struct page *page)
+{
+	int err = 0;
+	struct file *lower_file;
+	char* page_ptr = NULL;
+	mm_segment_t old_fs;
+	//char* scratch = NULL;
+	loff_t offset = page_offset(page);
+
+	//Allocating scratch which is size of page
+	//scratch = kmalloc(PAGE_SIZE, GFP_KERNEL);
+	//memset(scratch, 0, PAGE_SIZE);
+	
+	//Getting virtual address of page by mmapping it
+	page_ptr = (char *) kmap(page); 
+	lower_file = wrapfs_lower_file(file);
+	if(!lower_file){
+		err = 0;
+		goto error_handler;
+	}
+
+
+	//Allows us to pass page_ptr to vfs_read
+	old_fs = get_fs();
+	set_fs(get_ds());
+	//Reading encrypted data into scratch
+	err = vfs_read(lower_file, (void __user *)page_ptr, PAGE_SIZE, &offset);
+	set_fs(old_fs);
+	if(err ==0)
+		goto error_handler;
+	xcfs_decrypt(page_ptr, err);
+	kunmap(page);
+	
+error_handler:
+	//Error handling
+	if(err)
+		ClearPageUptodate(page);
+	else
+		SetPageUptodate(page);
+	unlock_page(page);
+	return err;
+}
+
 const struct address_space_operations wrapfs_aops = {
+	//.writepage = wrapfs_writepage,
+	.readpage = wrapfs_readpage,
 	.direct_IO = wrapfs_direct_IO,
 };
 
