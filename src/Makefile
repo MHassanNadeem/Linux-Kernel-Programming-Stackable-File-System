@@ -24,7 +24,8 @@ mount:
 unmount:
 	sudo umount $(mount_dir)
 
+buildmount:
+	@make && (make unmount > /dev/null 2>&1 ; make remove > /dev/null 2>&1 ; make insert; make mount) > /dev/null
+	
 test:
-	@rm -f $(mount_dir)/test_file
-	@echo "ABC" > $(mount_dir)/test_file
-	@echo "encrypted file: " && cat $(mount_src)/test_file && echo ""
+	@cd ../test_src ; make run
