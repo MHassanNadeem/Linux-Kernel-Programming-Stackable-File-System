@@ -26,6 +26,8 @@ unsigned char *getRandomBytes(unsigned char *buffer, size_t size){
 }
 
 int test_bufferedRW(char *src_filename, char *mount_filename){
+    remove( mount_filename );
+    
     FILE *src_fptr, *mount_fptr;
     unsigned char data[TMP_FILE_SIZE], data_enc[TMP_FILE_SIZE], data_read[TMP_FILE_SIZE];
     
@@ -64,7 +66,7 @@ int test_bufferedRW(char *src_filename, char *mount_filename){
             DBG(i, lu);
             DBG(data[i], u);
             DBG(data_read[i], u);
-            ERROR("Data written is not equal to data read\n");
+            ERROR("Data written to mounted dir is not equal to data read from mounter dir\n");
             return -1;
         }
         
@@ -72,7 +74,7 @@ int test_bufferedRW(char *src_filename, char *mount_filename){
             DBG(i, lu);
             DBG(data[i], u);
             DBG(data_enc[i], u);
-            ERROR("Data not being encrypted\n");
+            ERROR("Data written to mounted dir is not equal to decrypted(data from src dir)\n");
             return -1;
         }
     }
@@ -141,7 +143,8 @@ int test_mmapWrite(char *mount_filename){
     getRandomBytes(data, TMP_FILE_SIZE);
     
     /* MMAP Write the file */
-    if( (fd = open(mount_filename, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600)) == -1 ){
+    /* Flags: Write Only | create new if file does not exist | truncate old file to zero  */
+    if( (fd = open(mount_filename, O_WRONLY | O_CREAT | O_TRUNC, (mode_t)0600)) == -1 ){
         ERROR("open\n");
         return -1;
     }
@@ -198,6 +201,8 @@ int main(int argc, char **argv){
     
     srand((unsigned int) time (NULL)); // seed the rand function
     
+    /* ========== Buffered IO Test ============= */
+    PRINT("--------------------\n");
     if(test_bufferedRW(src_filename, mount_filename)){
         ERROR("Buffered IO Failed!!!\n");
     }else{
@@ -205,6 +210,7 @@ int main(int argc, char **argv){
     }
     
     /* ========== MMAP READ TEST ============= */
+    PRINT("--------------------\n");
     /* test memman read on lower filesystem just to check the testcase */
     if( test_mmapRead(src_filename) ){
         ERROR("OOPs this should not be happening\n");
@@ -214,12 +220,13 @@ int main(int argc, char **argv){
     }
     
     if(test_mmapRead(mount_filename)){
-        ERROR("MMAP read failed!!!\n");
+        ERROR("MMAP read test failed!!!\n");
     }else{
-        printf("MMAP read passed\n");
+        printf("MMAP read test passed\n");
     }
     
     /* ========== MMAP Write TEST ============= */
+    PRINT("--------------------\n");
     if( test_mmapWrite(src_filename) ){
         ERROR("OOPs this should not be happening\n");
         ERROR("bug in test_mmapWrite()\n");
@@ -228,9 +235,9 @@ int main(int argc, char **argv){
     }
     
     if(test_mmapWrite(mount_filename)){
-        ERROR("MMAP read failed!!!\n");
+        ERROR("MMAP write test failed!!!\n");
     }else{
-        printf("MMAP read passed\n");
+        printf("MMAP write test passed\n");
     }
     
     printf("=====================================\n");
