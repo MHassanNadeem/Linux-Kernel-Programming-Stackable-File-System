@@ -81,6 +81,8 @@ int test_bufferedRW(char *src_filename, char *mount_filename){
 }
 
 int test_mmapRead(char *mount_filename){
+    remove( mount_filename );
+    
     FILE *mount_fptr;
     int fd;
     struct stat sbuf;
@@ -115,8 +117,9 @@ int test_mmapRead(char *mount_filename){
     }
     
     /* Test if read correctly */
-    for(int i=0; i<sbuf.st_size; i++){
+    for(size_t i=0; i<sbuf.st_size; i++){
         if(data[i] != mmappedData[i]){
+            DBG(i, lu);
             DBG(data[i], u);
             DBG(mmappedData[i], u);
             ERROR("MMAP data not equal\n");
@@ -124,6 +127,52 @@ int test_mmapRead(char *mount_filename){
         }
     }
     
+    close(fd);
+    return 0;
+}
+
+int test_mmapWrite(char *mount_filename){
+    remove( mount_filename );
+    
+    FILE *mount_fptr;
+    int fd;
+    unsigned char data[TMP_FILE_SIZE], data_read[TMP_FILE_SIZE];;
+    
+    getRandomBytes(data, TMP_FILE_SIZE);
+    
+    /* MMAP Write the file */
+    if( (fd = open(mount_filename, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600)) == -1 ){
+        ERROR("open\n");
+        return -1;
+    }
+    
+    if(write(fd, data, sizeof(data)) == -1){
+        close(fd);
+        ERROR("write\n");
+        return -1;
+    }
+    
+    /* Read data without mmap */
+    mount_fptr = fopen(mount_filename, "rb");
+    if(mount_fptr == NULL){
+        ERROR("Could not open file %s\n", mount_filename);
+        return -1;
+    }
+    fread(data_read,sizeof(data_read),1,mount_fptr);
+    fclose(mount_fptr);
+    
+    /* Test if read correctly */
+    for(size_t i=0; i<TMP_FILE_SIZE; i++){
+        if(data[i] != data_read[i]){
+            DBG(i, lu);
+            DBG(data[i], u);
+            DBG(data_read[i], u);
+            ERROR("MMAP data not equal\n");
+            return -1;
+        }
+    }
+    
+    close(fd);
     return 0;
 }
 
@@ -155,6 +204,7 @@ int main(int argc, char **argv){
         printf("Bufferd IO test passed\n");
     }
     
+    /* ========== MMAP READ TEST ============= */
     /* test memman read on lower filesystem just to check the testcase */
     if( test_mmapRead(src_filename) ){
         ERROR("OOPs this should not be happening\n");
@@ -164,6 +214,20 @@ int main(int argc, char **argv){
     }
     
     if(test_mmapRead(mount_filename)){
+        ERROR("MMAP read failed!!!\n");
+    }else{
+        printf("MMAP read passed\n");
+    }
+    
+    /* ========== MMAP Write TEST ============= */
+    if( test_mmapWrite(src_filename) ){
+        ERROR("OOPs this should not be happening\n");
+        ERROR("bug in test_mmapWrite()\n");
+    }else{
+        printf("MMAP write sanity test passed\n");
+    }
+    
+    if(test_mmapWrite(mount_filename)){
         ERROR("MMAP read failed!!!\n");
     }else{
         printf("MMAP read passed\n");
