@@ -113,6 +113,7 @@ static int wrapfs_readpage(struct file *file, struct page *page)
 	set_fs(old_fs);
 	if(err ==0)
 		goto error_handler;
+	//Decrypt page
 	xcfs_decrypt(page_ptr, err);
 	kunmap(page);
 	
@@ -126,8 +127,70 @@ error_handler:
 	return err;
 }
 
+struct file *wrapfs_get_file_open(struct inode *_inode)
+{
+	char buf[1024];
+	struct dentry *sample_dentry = NULL;
+	struct inode *tmp_inode = _inode;
+	struct hlist_node *tmp_list = NULL;
+	hlist_for_each(tmp_list, &(tmp_inode->i_dentry))
+	{
+		sample_dentry = hlist_entry(tmp_list, struct dentry, d_u.d_alias);
+		printk("name of file is %s\n", sample_dentry->d_iname);
+		dentry_path_raw(sample_dentry, buf, 1024);
+	}
+	return filp_open(buf, O_RDWR, 0);
+	
+}
+
+static int wrapfs_writepage(struct page *page, struct writeback_control *wbc)
+{
+	int err = -1;
+	struct inode *wrapfs_inode, *lower_inode;
+	struct file *lower_file;
+	char* page_ptr = NULL;
+	loff_t offset;
+	mm_segment_t old_fs;
+
+	wrapfs_inode = page->mapping->host;
+	lower_inode = wrapfs_lower_inode(wrapfs_inode);
+	
+	page_ptr = (char *) kmap(page);
+	xcfs_encrypt(page_ptr, PAGE_SIZE);
+	offset = page_offset(page);
+	
+	lower_file = wrapfs_get_file_open(lower_inode);
+	if(lower_file == NULL){
+		err = -1;
+		goto error_handler;
+	}
+	old_fs = get_fs();
+	set_fs(get_ds());
+
+	err = vfs_write(lower_file, page_ptr, PAGE_SIZE, &offset);
+	set_fs(old_fs);
+	mark_inode_dirty_sync(wrapfs_inode);
+	kunmap(page);
+
+	if(err < 0){
+		printk("SHIT\n");
+		goto error_handler;
+	}
+
+error_handler:
+	if(err < 0){
+		ClearPageUptodate(page);
+		if(lower_file != NULL)
+			filp_close(lower_file,NULL);
+		return 1;
+	}else{
+		filp_close(lower_file, NULL);
+		SetPageUptodate(page);
+		return 0;
+	}
+}
 const struct address_space_operations wrapfs_aops = {
-	//.writepage = wrapfs_writepage,
+	.writepage = wrapfs_writepage,
 	.readpage = wrapfs_readpage,
 	.direct_IO = wrapfs_direct_IO,
 };
