@@ -221,6 +221,7 @@ static inline void unlock_dir(struct dentry *dir)
 
 /* Encryption / Decryption function prototypes */
 void xcfs_encrypt(char* mem, size_t size);
+void xcfs_encrypt_to_buffer(const char* mem, char* buffer, size_t size);
 void xcfs_decrypt(char* mem, size_t size);
 
 #endif	/* not _WRAPFS_H_ */

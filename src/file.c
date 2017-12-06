@@ -37,14 +37,29 @@ static ssize_t wrapfs_write(struct file *file, const char __user *buf,
 			    size_t count, loff_t *ppos)
 {
 	int err;
-
+    char *enc_buf;
+    mm_segment_t old_fs;
 	struct file *lower_file;
 	struct dentry *dentry = file->f_path.dentry;
+    
+    PRINT("------ WRITE ENCRYPT -----\n");
 
 	lower_file = wrapfs_lower_file(file);
-	PRINT("------ WRITE ENCRYPT -----");
-	xcfs_encrypt((char*)buf, count);
-	err = vfs_write(lower_file, buf, count, ppos);
+    
+    enc_buf = (char*)kmalloc(count, GFP_KERNEL);
+    if( enc_buf == NULL ){
+        ERROR("Could not allocate memory for encryption\n");
+        return -1;
+    }
+    xcfs_encrypt_to_buffer(buf, enc_buf, count);
+    
+    /* Some abuse for passing enc_buf to vfs_write */
+    old_fs = get_fs(); set_fs(get_ds());
+        err = vfs_write(lower_file, (const char __user *)enc_buf, count, ppos);
+	set_fs(old_fs);
+    
+    kfree(enc_buf);
+    
 	/* update our inode times+sizes upon a successful lower write */
 	if (err >= 0) {
 		fsstack_copy_inode_size(d_inode(dentry),
@@ -52,7 +67,7 @@ static ssize_t wrapfs_write(struct file *file, const char __user *buf,
 		fsstack_copy_attr_times(d_inode(dentry),
 					file_inode(lower_file));
 	}
-
+    
 	return err;
 }
 
