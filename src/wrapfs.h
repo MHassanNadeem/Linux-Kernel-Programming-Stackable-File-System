@@ -39,7 +39,7 @@
 extern int vfs_path_lookup(struct dentry *, struct vfsmount *, const char *, unsigned int, struct path *);
 
 /* the file system name */
-#define WRAPFS_NAME "wrapfs"
+#define WRAPFS_NAME "xcfs"
 
 /* magic */
 #define WRAPFS_SUPER_MAGIC	0xb550ca10
