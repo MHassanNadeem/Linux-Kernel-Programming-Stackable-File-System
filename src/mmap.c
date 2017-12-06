@@ -109,12 +109,12 @@ static int wrapfs_readpage(struct file *file, struct page *page)
 	old_fs = get_fs();
 	set_fs(get_ds());
 	//Reading encrypted data into scratch
-	err = vfs_read(lower_file, (void __user *)page_ptr, PAGE_SIZE, &offset);
+	err = !vfs_read(lower_file, (void __user *)page_ptr, PAGE_SIZE, &offset);
 	set_fs(old_fs);
-	if(err ==0)
+	if(err)
 		goto error_handler;
 	//Decrypt page
-	xcfs_decrypt(page_ptr, err);
+	xcfs_decrypt(page_ptr, PAGE_SIZE);
 	kunmap(page);
 	
 error_handler:
